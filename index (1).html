@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en" class="">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Productivity Toolkit</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-primary: #fff7ed; /* orange-50 */
+            --bg-secondary: #ffffff; /* white */
+            --bg-tertiary: #ffedd5; /* orange-100 */
+            --border-color: #fdba74; /* orange-300 */
+            --text-primary: #431407; /* orange-950 */
+            --text-secondary: #7c2d12; /* orange-800 */
+            --text-tertiary: #c2410c; /* orange-600 */
+            --accent-primary: #ea580c; /* orange-600 */
+            --accent-secondary: #ffedd5; /* orange-100 */
+        }
+
+        html.dark {
+            --bg-primary: #1c1917; /* stone-900 */
+            --bg-secondary: #292524; /* stone-800 */
+            --bg-tertiary: #44403c; /* stone-700 */
+            --border-color: #57534e; /* stone-600 */
+            --text-primary: #fff7ed; /* orange-50 */
+            --text-secondary: #fdba74; /* orange-300 */
+            --text-tertiary: #fb923c; /* orange-400 */
+            --accent-primary: #fb923c; /* orange-400 */
+            --accent-secondary: #7c2d12; /* orange-900 */
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background-color 0.3s ease;
+        }
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out, transform 0.1s ease;
+            color: var(--text-secondary);
+        }
+        .sidebar-link:hover {
+            background-color: var(--bg-tertiary);
+        }
+        .sidebar-link.active {
+            background-color: var(--accent-secondary);
+            color: var(--accent-primary);
+            font-weight: 500;
+        }
+        .sidebar-link:active, button:active {
+            transform: scale(0.97);
+        }
+        .task-item {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .bg-indigo-600,
+        .hover\:bg-indigo-700:hover,
+        .focus\:ring-indigo-500:focus {
+            background-color: var(--accent-primary) !important;
+        }
+        .text-indigo-600,
+        .text-indigo-500,
+        .text-indigo-400,
+        .hover\:text-indigo-500:hover {
+            color: var(--accent-primary) !important;
+        }
+        .border-indigo-500,
+        .focus\:ring-indigo-500:focus,
+        .peer-checked\:bg-indigo-600:checked {
+            border-color: var(--accent-primary) !important;
+        }
+        .bg-indigo-100,
+        .dark\:bg-indigo-900 {
+            background-color: var(--accent-secondary) !important;
+        }
+        .bg-indigo-50 {
+            background-color: var(--accent-secondary) !important;
+        }
+        .bg-indigo-900 {
+            background-color: var(--accent-secondary) !important;
+        }
+        .task-item:hover .delete-task {
+            opacity: 1;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
+        html.dark ::-webkit-scrollbar-thumb { background: #4b5563; }
+        ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+        html.dark ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+
+        .bg-green-500 { background-color: #f97316 !important; }
+        .bg-green-600:hover { background-color: #ea580c !important; }
+        .text-green-500 { color: #f97316 !important; }
+        .bg-amber-500 { background-color: #fb923c !important; }
+        .text-amber-500 { color: #fb923c !important; }
+        .bg-cyan-500 { background-color: #ea580c !important; }
+        .text-cyan-500 { color: #ea580c !important; }
+
+        /* Animations */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; transform: scale(0.95); } }
+        
+        .animate-fadeIn { animation: fadeIn 0.4s ease-out forwards; }
+        .animate-fadeOut { animation: fadeOut 0.3s ease-in forwards; }
+        
+        /* Calendar styles */
+        .calendar-task { font-size: 0.7rem; padding: 0.1rem 0.3rem; border-radius: 0.25rem; margin-top: 0.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        /* Heatmap styles */
+        .heatmap-cell { width: 1rem; height: 1rem; border-radius: 0.125rem; }
+    </style>
+</head>
+<body class="transition-colors duration-300">
+
+    <!-- Auth Container -->
+    <div id="auth-container" class="flex items-center justify-center min-h-screen bg-[var(--bg-secondary)]">
+        <div class="w-full max-w-sm p-8 space-y-6 bg-[var(--bg-primary)] rounded-2xl shadow-lg">
+            <!-- Login View -->
+            <div id="login-view">
+                <div class="text-center"><h1 class="text-3xl font-bold text-[var(--text-primary)]">Welcome Back</h1><p class="text-[var(--text-secondary)] mt-2">Sign in to continue to Productivity OS</p></div>
+                <form id="login-form" class="mt-8 space-y-4">
+                    <input type="email" placeholder="Email" class="w-full p-3 bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded-lg focus:ring-2 focus:ring-indigo-500 transition" required>
+                    <input type="password" placeholder="Password" class="w-full p-3 bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded-lg focus:ring-2 focus:ring-indigo-500 transition" required>
+                    <button type="submit" class="w-full bg-indigo-600 text-white py-3 px-6 rounded-lg hover:bg-indigo-700 transition-colors font-semibold">Sign In</button>
+                </form>
+                <p class="mt-6 text-center text-sm text-[var(--text-secondary)]">Don't have an account? <button id="show-signup" class="font-medium text-indigo-600 hover:text-indigo-500">Sign up</button></p>
+            </div>
+            <!-- Signup View -->
+            <div id="signup-view" class="hidden">
+                 <div class="text-center"><h1 class="text-3xl font-bold text-[var(--text-primary)]">Create Account</h1><p class="text-[var(--text-secondary)] mt-2">Get started with your new productivity hub</p></div>
+                <form id="signup-form" class="mt-8 space-y-4">
+                    <input type="text" placeholder="Full Name" class="w-full p-3 bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded-lg focus:ring-2 focus:ring-indigo-500 transition" required>
+                    <input type="email" placeholder="Email" class="w-full p-3 bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded-lg focus:ring-2 focus:ring-indigo-500 transition" required>
+                    <input type="password" placeholder="Password" class="w-full p-3 bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded-lg focus:ring-2 focus:ring-indigo-500 transition" required>
+                    <button type="submit" class="w-full bg-indigo-600 text-white py-3 px-6 rounded-lg hover:bg-indigo-700 transition-colors font-semibold">Create Account</button>
+                </form>
+                <p class="mt-6 text-center text-sm text-[var(--text-secondary)]">Already have an account? <button id="show-login" class="font-medium text-indigo-600 hover:text-indigo-500">Sign in</button></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Container -->
+    <div id="app-container" class="hidden">
+        <div class="flex h-screen">
+            <!-- Sidebar Navigation -->
+            <aside class="w-64 bg-white dark:bg-slate-900/50 border-r border-[var(--border-color)] p-4 flex flex-col">
+                <div class="flex items-center gap-2 mb-8"><div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center"><i data-lucide="check-square" class="text-white w-5 h-5"></i></div><h1 class="text-lg font-bold text-[var(--text-primary)]">Productivity OS</h1></div>
+                <nav class="flex flex-col space-y-1">
+                    <button id="nav-dashboard" class="sidebar-link active"><i data-lucide="layout-dashboard" class="w-5 h-5 mr-3"></i><span>Dashboard</span></button>
+                    <button id="nav-analytics" class="sidebar-link"><i data-lucide="bar-chart-3" class="w-5 h-5 mr-3"></i><span>Analytics</span></button>
+                    <button id="nav-tasks" class="sidebar-link"><i data-lucide="list-checks" class="w-5 h-5 mr-3"></i><span>Tasks</span></button>
+                    <button id="nav-calendar" class="sidebar-link"><i data-lucide="calendar-days" class="w-5 h-5 mr-3"></i><span>Calendar</span></button>
+                    <button id="nav-habits" class="sidebar-link"><i data-lucide="repeat" class="w-5 h-5 mr-3"></i><span>Habits</span></button>
+                    <button id="nav-timer" class="sidebar-link"><i data-lucide="timer" class="w-5 h-5 mr-3"></i><span>Timer</span></button>
+                    <button id="nav-notes" class="sidebar-link"><i data-lucide="notebook-pen" class="w-5 h-5 mr-3"></i><span>Notes</span></button>
+                    <button id="nav-wellness" class="sidebar-link"><i data-lucide="heart-pulse" class="w-5 h-5 mr-3"></i><span>Wellness</span></button>
+                </nav>
+                <div class="mt-auto">
+                    <div class="flex items-center justify-center p-2 rounded-lg bg-[var(--bg-tertiary)]">
+                        <i data-lucide="sun" class="w-5 h-5 text-yellow-500"></i>
+                        <label for="dark-mode-toggle" class="relative inline-flex items-center cursor-pointer mx-4">
+                            <input type="checkbox" value="" id="dark-mode-toggle" class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-300 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                        </label>
+                        <i data-lucide="moon" class="w-5 h-5 text-indigo-400"></i>
+                    </div>
+                    <p class="mt-4 text-center text-xs text-[var(--text-tertiary)]">&copy; 2024 Productivity OS</p>
+                </div>
+            </aside>
+
+            <!-- Main Content Area -->
+            <main class="flex-1 overflow-y-auto p-6 md:p-10 bg-[var(--bg-primary)]">
+                <!-- Dashboard Content -->
+                <div id="content-dashboard" class="page-content">
+                    <header class="mb-8"><h2 id="welcome-greeting" class="text-3xl font-bold text-[var(--text-primary)]">Good Morning!</h2><p id="current-date" class="text-[var(--text-secondary)]">Loading date...</p></header>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2 space-y-6">
+                            <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-color)]"><h3 class="font-semibold text-lg mb-4 text-[var(--text-primary)] flex items-center"><i data-lucide="list-todo" class="w-5 h-5 mr-2 text-indigo-500"></i>Today's Focus</h3><div id="dashboard-task-list" class="space-y-3"><p class="text-sm text-[var(--text-secondary)]">No tasks for today yet.</p></div></div>
+                            <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-color)]"><h3 class="font-semibold text-lg mb-4 text-[var(--text-primary)] flex items-center"><i data-lucide="repeat" class="w-5 h-5 mr-2 text-green-500"></i>Today's Habits</h3><div id="dashboard-habit-list" class="space-y-3"><p class="text-sm text-[var(--text-secondary)]">No habits tracked yet.</p></div></div>
+                        </div>
+                        <div class="lg:col-span-1 space-y-6">
+                            <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-color)]"><h3 class="font-semibold text-lg mb-4 text-[var(--text-primary)] flex items-center"><i data-lucide="cloud-sun" class="w-5 h-5 mr-2 text-amber-500"></i>Weather</h3><div id="weather-widget" class="text-center"><p class="text-[var(--text-secondary)]">Loading weather...</p></div></div>
+                            <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-color)]"><h3 class="font-semibold text-lg mb-4 text-[var(--text-primary)] flex items-center"><i data-lucide="quote" class="w-5 h-5 mr-2 text-cyan-500"></i>Quote of the Day</h3><div id="quote-widget"><p class="text-sm italic text-[var(--text-secondary)]">"The secret of getting ahead is getting started."</p><p class="text-right text-xs font-semibold mt-2 text-[var(--text-primary)]">- Mark Twain</p></div></div>
+                            <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-color)] text-center"><h3 class="font-semibold text-lg mb-2 text-[var(--text-primary)]">Focus Timer</h3><p id="dashboard-timer-display" class="text-4xl font-mono font-bold text-[var(--text-primary)] py-2">00:00:00</p><button onclick="document.getElementById('nav-timer').click()" class="mt-2 w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors">Go to Timer</button></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analytics Content -->
+                <div id="content-analytics" class="page-content hidden">
+                    <header class="mb-8"><h2 class="text-3xl font-bold text-[var(--text-primary)]">Analytics</h2><p class="text-[var(--text-secondary)]">Visualize your productivity and track your progress.</p></header>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-color)]"><h3 class="font-semibold text-lg mb-4 text-[var(--text-primary)]">Task Completion (Last 4 Weeks)</h3><canvas id="task-completion-chart"></canvas></div>
+                        <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-color)]"><h3 class="font-semibold text-lg mb-4 text-[var(--text-primary)]">Focus Time (Last 7 Days)</h3><canvas id="focus-time-chart"></canvas></div>
+                        <div class="lg:col-span-2 bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-color)]"><h3 class="font-semibold text-lg mb-4 text-[var(--text-primary)]">Habit Consistency</h3><div id="habit-heatmap" class="overflow-x-auto"></div></div>
+                    </div>
+                </div>
+
+                <!-- Task Manager Content -->
+                <div id="content-tasks" class="page-content hidden">
+                     <header class="mb-8"><h2 class="text-3xl font-bold text-[var(--text-primary)]">Task Manager</h2><p class="text-[var(--text-secondary)]">Organize and track all your to-dos.</p></header>
+                    <div class="bg-[var(--bg-primary)] p-6 rounded-lg">
+                        <form id="task-form" class="flex flex-col sm:flex-row gap-2 mb-6 items-center">
+                            <input type="text" id="task-input" placeholder="Add a new task..." class="flex-grow p-3 bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded-lg focus:ring-2 focus:ring-indigo-500 transition">
+                            <input type="date" id="task-due-date" class="p-3 bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded-lg focus:ring-2 focus:ring-indigo-500 transition text-[var(--text-secondary)]">
+                            <select id="task-priority" class="p-3 bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded-lg focus:ring-2 focus:ring-indigo-500 transition"><option value="low">Low Priority</option><option value="medium">Medium Priority</option><option value="high">High Priority</option></select>
+                            <button type="submit" class="bg-indigo-600 text-white py-3 px-6 rounded-lg hover:bg-indigo-700 transition-colors font-semibold">Add Task</button>
+                        </form>
+                        <div id="task-list" class="space-y-2"></div>
+                    </div>
+                </div>
+                
+                <!-- Calendar Content -->
+                <div id="content-calendar" class="page-content hidden">
+                    <header class="mb-8 flex justify-between items-center">
+                        <div><h2 class="text-3xl font-bold text-[var(--text-primary)]">Calendar</h2><p class="text-[var(--text-secondary)]">Visualize your tasks by month.</p></div>
+                        <div class="flex items-center gap-2">
+                            <button id="prev-month-btn" class="p-2 rounded-md hover:bg-[var(--bg-tertiary)]"><i data-lucide="chevron-left" class="w-6 h-6"></i></button>
+                            <h3 id="calendar-header" class="text-xl font-semibold w-36 text-center"></h3>
+                            <button id="next-month-btn" class="p-2 rounded-md hover:bg-[var(--bg-tertiary)]"><i data-lucide="chevron-right" class="w-6 h-6"></i></button>
+                        </div>
+                    </header>
+                    <div id="calendar-grid" class="grid grid-cols-7 gap-1"></div>
+                </div>
+
+                <!-- Habit Tracker Content -->
+                <div id="content-habits" class="page-content hidden">
+                    <header class="mb-8"><h2 class="text-3xl font-bold text-[var(--text-primary)]">Habit Tracker</h2><p class="text-[var(--text-secondary)]">Build consistency by tracking your daily habits.</p></header>
+                    <form id="habit-form" class="flex gap-2 mb-6 max-w-md">
+                        <input type="text" id="habit-input" placeholder="Add a new habit (e.g., Read for 15 mins)" class="flex-grow p-3 bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded-lg focus:ring-2 focus:ring-indigo-500 transition">
+                        <button type="submit" class="bg-indigo-600 text-white py-3 px-6 rounded-lg hover:bg-indigo-700 transition-colors font-semibold">Add</button>
+                    </form>
+                    <div id="habit-tracker-grid" class="overflow-x-auto"></div>
+                </div>
+
+                <!-- Focus Timer Content -->
+                <div id="content-timer" class="page-content hidden">
+                    <header class="mb-8"><h2 class="text-3xl font-bold text-[var(--text-primary)]">Focus Timer</h2><p class="text-[var(--text-secondary)]">Track time spent on your tasks.</p></header>
+                    <div class="bg-[var(--bg-secondary)] p-6 rounded-lg text-center max-w-2xl mx-auto border border-[var(--border-color)]">
+                        <p id="timer-display" class="text-7xl md:text-8xl font-mono font-bold text-[var(--text-primary)] py-4">00:00:00</p>
+                        <div class="my-6">
+                            <select id="timer-task-select" class="w-full max-w-xs p-2 bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded-lg">
+                                <option value="">No associated task</option>
+                            </select>
+                        </div>
+                        <div class="flex justify-center gap-4">
+                            <button id="start-pause-btn" class="bg-green-500 text-white py-3 px-8 rounded-lg hover:bg-green-600 transition-colors text-lg font-semibold">Start</button>
+                            <button id="reset-log-btn" class="bg-red-500 text-white py-3 px-8 rounded-lg hover:bg-red-600 transition-colors text-lg font-semibold">Reset</button>
+                        </div>
+                        <div id="session-history-container" class="mt-8 text-left hidden">
+                            <h3 class="font-semibold text-lg mb-4 text-[var(--text-primary)]">Session History</h3>
+                            <ul id="session-history-list" class="space-y-2 text-sm text-[var(--text-secondary)]"></ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notes Content -->
+                <div id="content-notes" class="page-content hidden">
+                    <header class="mb-8"><h2 class="text-3xl font-bold text-[var(--text-primary)]">Notes</h2><p class="text-[var(--text-secondary)]">Jot down your thoughts. They save automatically.</p></header>
+                    <div class="max-w-4xl mx-auto"><textarea id="notes-textarea" class="w-full h-96 p-4 bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded-lg focus:ring-2 focus:ring-indigo-500 transition" placeholder="Start writing..."></textarea></div>
+                </div>
+                
+                <!-- Wellness Content -->
+                <div id="content-wellness" class="page-content hidden">
+                    <header class="mb-8"><h2 class="text-3xl font-bold text-[var(--text-primary)]">BMI Calculator</h2><p class="text-[var(--text-secondary)]">Check your Body Mass Index.</p></header>
+                    <div class="p-6 rounded-lg max-w-4xl mx-auto"><div class="grid grid-cols-1 md:grid-cols-2 gap-8"><div><div class="mb-4"><label for="unit-system" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Unit System</label><select id="unit-system" class="w-full p-2 bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded-lg"><option value="metric" selected>Metric (kg, cm)</option><option value="imperial">Imperial (lbs, ft, in)</option></select></div><div id="metric-inputs"><div class="mb-4"><label for="metric-weight" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Weight (kg)</label><input type="number" id="metric-weight" class="w-full p-2 bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded-lg" placeholder="e.g., 70"></div><div><label for="metric-height" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Height (cm)</label><input type="number" id="metric-height" class="w-full p-2 bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded-lg" placeholder="e.g., 175"></div></div><div id="imperial-inputs" class="hidden"><div class="mb-4"><label for="imperial-weight" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Weight (lbs)</label><input type="number" id="imperial-weight" class="w-full p-2 bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded-lg" placeholder="e.g., 154"></div><div><label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Height</label><div class="flex gap-2"><input type="number" id="imperial-height-ft" class="w-full p-2 bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded-lg" placeholder="ft"><input type="number" id="imperial-height-in" class="w-full p-2 bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded-lg" placeholder="in"></div></div></div><button id="calculate-bmi-btn" class="mt-6 w-full bg-indigo-600 text-white py-3 px-4 rounded-lg hover:bg-indigo-700 transition-colors font-semibold">Calculate BMI</button></div><div id="bmi-result-display" class="bg-[var(--bg-secondary)] p-6 rounded-lg flex flex-col justify-center items-center text-center border border-[var(--border-color)]"><p class="text-[var(--text-secondary)]">Enter your details to see your BMI result.</p></div></div></div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- GLOBAL STATE & ELEMENTS ---
+            let tasks = JSON.parse(localStorage.getItem('productivity-tasks')) || [];
+            let habits = JSON.parse(localStorage.getItem('productivity-habits')) || [];
+            let notes = localStorage.getItem('productivity-notes') || '';
+            let timerState = { startTime: 0, updatedTime: 0, difference: 0, tInterval: null, running: false, paused: false };
+            let loggedSessions = JSON.parse(localStorage.getItem('productivity-sessions')) || [];
+            let bmiData = JSON.parse(localStorage.getItem('productivity-bmi')) || null;
+            let calendarDate = new Date();
+            let taskChart, focusChart;
+
+            const navLinks = document.querySelectorAll('.sidebar-link');
+            const pages = document.querySelectorAll('.page-content');
+            const authContainer = document.getElementById('auth-container');
+            const appContainer = document.getElementById('app-container');
+
+            const quotes = [
+                { content: "The secret of getting ahead is getting started.", author: "Mark Twain" },
+                { content: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
+                { content: "Believe you can and you're halfway there.", author: "Theodore Roosevelt" },
+                { content: "Strive not to be a success, but rather to be of value.", author: "Albert Einstein" },
+                { content: "The future belongs to those who believe in the beauty of their dreams.", author: "Eleanor Roosevelt" }
+            ];
+
+            // --- UTILITY FUNCTIONS ---
+            const formatTime = (ms) => {
+                const totalSeconds = Math.floor(ms / 1000);
+                const hours = Math.floor(totalSeconds / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                const seconds = totalSeconds % 60;
+                return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            };
+
+            // --- INITIALIZATION ---
+            const initializeApp = () => {
+                initTheme();
+                if (sessionStorage.getItem('isLoggedIn') === 'true') {
+                    showApp();
+                } else {
+                    showAuth();
+                }
+                setupAuthListeners();
+            };
+            
+            const startMainApp = () => {
+                renderTasks();
+                renderHabitTracker();
+                renderCalendar();
+                loadNotes();
+                updateDashboardGreeting();
+                updateDashboardDate();
+                updateDashboardTasks();
+                updateDashboardHabits();
+                updateDashboardTimer();
+                displayStaticWeather();
+                displayRandomQuote();
+                if (bmiData) renderBmiResult(bmiData.bmi, bmiData.category);
+                setupFocusTimer();
+                renderAnalytics();
+                lucide.createIcons();
+            };
+
+            // --- AUTHENTICATION FLOW ---
+            const showAuth = () => { authContainer.classList.remove('hidden'); appContainer.classList.add('hidden'); };
+            const showApp = () => { authContainer.classList.add('hidden'); appContainer.classList.remove('hidden'); startMainApp(); };
+            const setupAuthListeners = () => {
+                const loginView = document.getElementById('login-view');
+                const signupView = document.getElementById('signup-view');
+                const showSignupBtn = document.getElementById('show-signup');
+                const showLoginBtn = document.getElementById('show-login');
+                const loginForm = document.getElementById('login-form');
+                const signupForm = document.getElementById('signup-form');
+                
+                const simulateLogin = (e) => { e.preventDefault(); sessionStorage.setItem('isLoggedIn', 'true'); showApp(); };
+
+                showSignupBtn.addEventListener('click', () => { loginView.classList.add('hidden'); signupView.classList.remove('hidden'); });
+                showLoginBtn.addEventListener('click', () => { signupView.classList.add('hidden'); loginView.classList.remove('hidden'); });
+                
+                loginForm.addEventListener('submit', simulateLogin);
+                signupForm.addEventListener('submit', simulateLogin);
+            };
+
+            // --- THEME (DARK MODE) ---
+            const darkModeToggle = document.getElementById('dark-mode-toggle');
+            const initTheme = () => {
+                const isDarkMode = localStorage.getItem('theme') === 'dark';
+                darkModeToggle.checked = isDarkMode;
+                if (isDarkMode) document.documentElement.classList.add('dark');
+            };
+            darkModeToggle.addEventListener('change', () => {
+                document.documentElement.classList.toggle('dark', darkModeToggle.checked);
+                localStorage.setItem('theme', darkModeToggle.checked ? 'dark' : 'light');
+                renderAnalytics(); // Re-render charts with new theme colors
+            });
+
+            // --- PAGE NAVIGATION ---
+            navLinks.forEach(link => {
+                link.addEventListener('click', () => {
+                    const targetId = link.id.replace('nav-', 'content-');
+                    navLinks.forEach(l => l.classList.remove('active'));
+                    link.classList.add('active');
+                    pages.forEach(page => {
+                        page.classList.remove('animate-fadeIn');
+                        if (page.id !== targetId) page.classList.add('hidden');
+                    });
+                    const targetPage = document.getElementById(targetId);
+                    targetPage.classList.remove('hidden');
+                    targetPage.classList.add('animate-fadeIn');
+                    if (targetId === 'content-analytics') renderAnalytics();
+                });
+            });
+
+            // --- DASHBOARD ---
+            const updateDashboardGreeting = () => { document.getElementById('welcome-greeting').textContent = `Good ${new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 18 ? 'Afternoon' : 'Evening'}!`; };
+            const updateDashboardDate = () => { document.getElementById('current-date').textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }); };
+            const updateDashboardTasks = () => {
+                const listEl = document.getElementById('dashboard-task-list');
+                const today = new Date().toISOString().split('T')[0];
+                const todaysTasks = tasks.filter(t => t.dueDate === today && !t.completed);
+                listEl.innerHTML = '';
+                if (todaysTasks.length === 0) { listEl.innerHTML = `<p class="text-sm text-[var(--text-secondary)]">No tasks due today. 🎉</p>`; return; }
+                todaysTasks.slice(0, 3).forEach(task => {
+                    const el = document.createElement('div');
+                    el.className = 'flex items-center gap-3 text-sm';
+                    el.innerHTML = `<div class="w-2 h-2 rounded-full ${task.priority === 'high' ? 'bg-red-500' : task.priority === 'medium' ? 'bg-yellow-500' : 'bg-green-500'}"></div><span class="flex-grow text-[var(--text-secondary)]">${task.text}</span>`;
+                    listEl.appendChild(el);
+                });
+            };
+            const updateDashboardHabits = () => {
+                const listEl = document.getElementById('dashboard-habit-list');
+                listEl.innerHTML = '';
+                if (habits.length === 0) { listEl.innerHTML = `<p class="text-sm text-[var(--text-secondary)]">No habits added yet.</p>`; return; }
+                const todayStr = new Date().toISOString().split('T')[0];
+                habits.forEach(habit => {
+                    const isDone = habit.completed.includes(todayStr);
+                    const el = document.createElement('div');
+                    el.className = 'flex items-center gap-3 text-sm';
+                    el.innerHTML = `<i data-lucide="${isDone ? 'check-circle-2' : 'circle'}" class="w-4 h-4 ${isDone ? 'text-green-500' : 'text-[var(--text-tertiary)]'}"></i><span class="flex-grow text-[var(--text-secondary)] ${isDone ? 'line-through' : ''}">${habit.name}</span>`;
+                    listEl.appendChild(el);
+                });
+                lucide.createIcons();
+            };
+            const updateDashboardTimer = () => { document.getElementById('dashboard-timer-display').textContent = formatTime(timerState.difference); };
+            const displayStaticWeather = () => {
+                document.getElementById('weather-widget').innerHTML = `<div class="flex items-center justify-center gap-4"><div class="text-5xl font-bold">31°C</div><div class="text-left"><div>Sunny</div><div class="text-sm text-[var(--text-secondary)]">Feels like 34°C</div></div></div>`;
+            };
+            const displayRandomQuote = () => {
+                const quoteWidget = document.getElementById('quote-widget');
+                const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+                quoteWidget.innerHTML = `<p class="text-sm italic text-[var(--text-secondary)]">"${randomQuote.content}"</p><p class="text-right text-xs font-semibold mt-2 text-[var(--text-primary)]">- ${randomQuote.author}</p>`;
+            };
+
+            // --- ANALYTICS ---
+            const renderAnalytics = () => {
+                renderTaskChart();
+                renderFocusChart();
+                renderHabitHeatmap();
+            };
+            const getChartColors = () => {
+                const isDark = document.documentElement.classList.contains('dark');
+                return {
+                    grid: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+                    ticks: isDark ? '#94a3b8' : '#475569',
+                };
+            };
+            const renderTaskChart = () => {
+                const ctx = document.getElementById('task-completion-chart').getContext('2d');
+                const labels = [];
+                const data = [];
+                for (let i = 3; i >= 0; i--) {
+                    const d = new Date();
+                    d.setDate(d.getDate() - (i * 7));
+                    labels.push(`Week of ${d.toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}`);
+                    const weekStart = new Date(d);
+                    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+                    const weekEnd = new Date(weekStart);
+                    weekEnd.setDate(weekEnd.getDate() + 6);
+                    
+                    const completedTasks = tasks.filter(task => {
+                        if (!task.dueDate) return false;
+                        const taskDate = new Date(task.dueDate);
+                        return task.completed && taskDate >= weekStart && taskDate <= weekEnd;
+                    }).length;
+                    data.push(completedTasks);
+                }
+                if (taskChart) taskChart.destroy();
+                taskChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: { labels, datasets: [{ label: 'Tasks Completed', data, backgroundColor: 'rgba(79, 70, 229, 0.7)', borderColor: 'rgba(79, 70, 229, 1)', borderWidth: 1 }] },
+                    options: { scales: { y: { beginAtZero: true, grid: { color: getChartColors().grid }, ticks: { color: getChartColors().ticks } }, x: { grid: { color: getChartColors().grid }, ticks: { color: getChartColors().ticks } } } }
+                });
+            };
+            const renderFocusChart = () => {
+                const ctx = document.getElementById('focus-time-chart').getContext('2d');
+                const labels = [];
+                const data = [];
+                for (let i = 6; i >= 0; i--) {
+                    const d = new Date();
+                    d.setDate(d.getDate() - i);
+                    labels.push(d.toLocaleDateString('en-US', { weekday: 'short' }));
+                    const dayStr = d.toISOString().split('T')[0];
+                    const totalMinutes = loggedSessions
+                        .filter(s => s.date.startsWith(dayStr))
+                        .reduce((sum, s) => sum + (s.duration / 60000), 0);
+                    data.push(totalMinutes);
+                }
+                if (focusChart) focusChart.destroy();
+                focusChart = new Chart(ctx, {
+                    type: 'line',
+                    data: { labels, datasets: [{ label: 'Focus (minutes)', data, backgroundColor: 'rgba(34, 197, 94, 0.2)', borderColor: 'rgba(34, 197, 94, 1)', borderWidth: 2, tension: 0.3 }] },
+                    options: { scales: { y: { beginAtZero: true, grid: { color: getChartColors().grid }, ticks: { color: getChartColors().ticks } }, x: { grid: { color: getChartColors().grid }, ticks: { color: getChartColors().ticks } } } }
+                });
+            };
+            const renderHabitHeatmap = () => {
+                const container = document.getElementById('habit-heatmap');
+                container.innerHTML = '';
+                if (habits.length === 0) { container.innerHTML = '<p class="text-center text-[var(--text-secondary)] py-4">No habits to display.</p>'; return; }
+                const table = document.createElement('table');
+                table.className = "w-full text-left border-collapse";
+                let thead = '<thead><tr><th class="p-2 border-b border-[var(--border-color)]">Habit</th>';
+                const today = new Date();
+                const dates = [];
+                for (let i = 29; i >= 0; i--) {
+                    const date = new Date();
+                    date.setDate(today.getDate() - i);
+                    dates.push(date);
+                    thead += `<th class="p-1 text-center text-xs text-[var(--text-tertiary)]">${date.getDate()}</th>`;
+                }
+                thead += '</tr></thead>';
+                table.innerHTML = thead;
+                let tbody = '<tbody>';
+                habits.forEach(habit => {
+                    tbody += `<tr><td class="p-2 border-b border-r border-[var(--border-color)] font-medium text-sm">${habit.name}</td>`;
+                    dates.forEach(date => {
+                        const dateStr = date.toISOString().split('T')[0];
+                        const isCompleted = habit.completed.includes(dateStr);
+                        tbody += `<td class="p-1 border-b border-r border-[var(--border-color)]"><div class="heatmap-cell ${isCompleted ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-700'}"></div></td>`;
+                    });
+                    tbody += '</tr>';
+                });
+                tbody += '</tbody>';
+                table.innerHTML += tbody;
+                container.appendChild(table);
+            };
+
+            // --- TASK MANAGER ---
+            const taskForm = document.getElementById('task-form');
+            const saveTasks = () => { localStorage.setItem('productivity-tasks', JSON.stringify(tasks)); updateDashboardTasks(); renderCalendar(); };
+            const renderTasks = () => {
+                const taskList = document.getElementById('task-list');
+                taskList.innerHTML = '';
+                if (tasks.length === 0) { taskList.innerHTML = '<p class="text-center text-[var(--text-secondary)] py-4">No tasks yet. Add one above!</p>'; return; }
+                tasks.sort((a, b) => (a.dueDate > b.dueDate) ? 1 : -1);
+                tasks.forEach((task, index) => {
+                    const el = document.createElement('div');
+                    el.className = `task-item flex items-center justify-between bg-[var(--bg-secondary)] p-3 rounded-lg transition-all border border-[var(--border-color)] ${task.completed ? 'opacity-60' : ''}`;
+                    el.innerHTML = `<div class="flex items-center gap-4"><input type="checkbox" data-index="${index}" class="task-checkbox h-5 w-5 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-600 bg-transparent" ${task.completed ? 'checked' : ''}><div class="flex flex-col"><span class="text-[var(--text-primary)] ${task.completed ? 'line-through text-[var(--text-secondary)]' : ''}">${task.text}</span><span class="text-xs text-[var(--text-tertiary)]">${task.dueDate || 'No date'}</span></div></div><div class="flex items-center gap-3"><div class="w-2.5 h-2.5 rounded-full ${task.priority === 'high' ? 'bg-red-400' : task.priority === 'medium' ? 'bg-yellow-400' : 'bg-green-400'}"></div><button data-index="${index}" class="delete-task text-[var(--text-tertiary)] hover:text-red-500 transition-colors opacity-0"><i data-lucide="trash-2" class="w-5 h-5"></i></button></div>`;
+                    if (task.isNew) { el.classList.add('animate-fadeIn'); delete task.isNew; }
+                    taskList.appendChild(el);
+                });
+                lucide.createIcons();
+            };
+            taskForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const text = document.getElementById('task-input').value.trim();
+                const dueDate = document.getElementById('task-due-date').value;
+                if (text) {
+                    tasks.unshift({ text, completed: false, priority: document.getElementById('task-priority').value, dueDate, isNew: true });
+                    document.getElementById('task-input').value = ''; document.getElementById('task-due-date').value = '';
+                    saveTasks(); renderTasks();
+                }
+            });
+            document.getElementById('task-list').addEventListener('click', (e) => {
+                if (e.target.matches('.task-checkbox')) { tasks[e.target.dataset.index].completed = !tasks[e.target.dataset.index].completed; saveTasks(); renderTasks(); }
+                if (e.target.closest('.delete-task')) {
+                    const button = e.target.closest('.delete-task');
+                    const taskEl = button.closest('.task-item');
+                    taskEl.classList.add('animate-fadeOut');
+                    taskEl.addEventListener('animationend', () => { tasks.splice(button.dataset.index, 1); saveTasks(); renderTasks(); }, { once: true });
+                }
+            });
+
+            // --- CALENDAR ---
+            const calendarGrid = document.getElementById('calendar-grid');
+            const calendarHeader = document.getElementById('calendar-header');
+            const renderCalendar = () => {
+                calendarGrid.innerHTML = '';
+                calendarDate.setDate(1);
+                const month = calendarDate.getMonth();
+                const year = calendarDate.getFullYear();
+                calendarHeader.textContent = `${calendarDate.toLocaleString('default', { month: 'long' })} ${year}`;
+                const firstDay = calendarDate.getDay();
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                const today = new Date();
+                ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(day => {
+                    const dayEl = document.createElement('div');
+                    dayEl.className = "text-center font-semibold text-sm text-[var(--text-secondary)] py-2";
+                    dayEl.textContent = day;
+                    calendarGrid.appendChild(dayEl);
+                });
+                for (let i = 0; i < firstDay; i++) { calendarGrid.appendChild(document.createElement('div')); }
+                for (let i = 1; i <= daysInMonth; i++) {
+                    const dayEl = document.createElement('div');
+                    dayEl.className = "p-2 border border-[var(--border-color)] h-28 flex flex-col";
+                    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+                    const dayNumber = document.createElement('span');
+                    dayNumber.textContent = i;
+                    dayNumber.className = "text-sm";
+                    if (i === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
+                        dayNumber.className += " bg-indigo-600 text-white rounded-full w-6 h-6 flex items-center justify-center";
+                    }
+                    dayEl.appendChild(dayNumber);
+                    const tasksOnDay = tasks.filter(t => t.dueDate === dateStr);
+                    const tasksContainer = document.createElement('div');
+                    tasksContainer.className = 'flex-grow overflow-y-auto mt-1';
+                    tasksOnDay.forEach(task => {
+                        const taskEl = document.createElement('div');
+                        taskEl.textContent = task.text;
+                        const priorityColors = { high: 'bg-red-200 text-red-800 dark:bg-red-900 dark:text-red-200', medium: 'bg-yellow-200 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200', low: 'bg-green-200 text-green-800 dark:bg-green-900 dark:text-green-200' };
+                        taskEl.className = `calendar-task ${priorityColors[task.priority]}`;
+                        tasksContainer.appendChild(taskEl);
+                    });
+                    dayEl.appendChild(tasksContainer);
+                    calendarGrid.appendChild(dayEl);
+                }
+            };
+            document.getElementById('prev-month-btn').addEventListener('click', () => { calendarDate.setMonth(calendarDate.getMonth() - 1); renderCalendar(); });
+            document.getElementById('next-month-btn').addEventListener('click', () => { calendarDate.setMonth(calendarDate.getMonth() + 1); renderCalendar(); });
+
+            // --- HABIT TRACKER ---
+            const habitForm = document.getElementById('habit-form');
+            const saveHabits = () => { localStorage.setItem('productivity-habits', JSON.stringify(habits)); updateDashboardHabits(); };
+            const renderHabitTracker = () => {
+                const gridEl = document.getElementById('habit-tracker-grid');
+                gridEl.innerHTML = '';
+                if (habits.length === 0) { gridEl.innerHTML = '<p class="text-center text-[var(--text-secondary)] py-4">No habits yet. Add one to start tracking!</p>'; return; }
+                const table = document.createElement('table');
+                table.className = "w-full text-left border-collapse";
+                let thead = '<thead><tr><th class="p-2 border-b border-[var(--border-color)]">Habit</th>';
+                const today = new Date();
+                for (let i = 6; i >= 0; i--) {
+                    const date = new Date(); date.setDate(today.getDate() - i);
+                    thead += `<th class="p-2 border-b border-[var(--border-color)] text-center text-sm">${date.getDate()}<br>${date.toLocaleDateString('en-US', { weekday: 'short' })}</th>`;
+                }
+                thead += '</tr></thead>';
+                table.innerHTML = thead;
+                let tbody = '<tbody>';
+                habits.forEach((habit, habitIndex) => {
+                    tbody += `<tr><td class="p-2 border-b border-[var(--border-color)] font-medium">${habit.name}</td>`;
+                    for (let i = 6; i >= 0; i--) {
+                        const date = new Date(); date.setDate(today.getDate() - i);
+                        const dateStr = date.toISOString().split('T')[0];
+                        const isCompleted = habit.completed.includes(dateStr);
+                        tbody += `<td class="p-2 border-b border-[var(--border-color)] text-center"><input type="checkbox" data-habit-index="${habitIndex}" data-date="${dateStr}" class="habit-checkbox h-5 w-5 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-600 bg-transparent cursor-pointer" ${isCompleted ? 'checked' : ''}></td>`;
+                    }
+                    tbody += '</tr>';
+                });
+                tbody += '</tbody>';
+                table.innerHTML += tbody;
+                gridEl.appendChild(table);
+            };
+            habitForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const input = document.getElementById('habit-input');
+                const name = input.value.trim();
+                if (name && !habits.find(h => h.name === name)) {
+                    habits.push({ name, completed: [] });
+                    input.value = '';
+                    saveHabits(); renderHabitTracker();
+                }
+            });
+            document.getElementById('habit-tracker-grid').addEventListener('change', (e) => {
+                if (e.target.matches('.habit-checkbox')) {
+                    const { habitIndex, date } = e.target.dataset;
+                    const completedList = habits[habitIndex].completed;
+                    if (e.target.checked) { if (!completedList.includes(date)) completedList.push(date); }
+                    else { const index = completedList.indexOf(date); if (index > -1) completedList.splice(index, 1); }
+                    saveHabits();
+                }
+            });
+
+            // --- FOCUS TIMER ---
+            const timerDisplay = document.getElementById('timer-display');
+            const startPauseBtn = document.getElementById('start-pause-btn');
+            const resetLogBtn = document.getElementById('reset-log-btn');
+            const timerTaskSelect = document.getElementById('timer-task-select');
+
+            const setupFocusTimer = () => {
+                startPauseBtn.addEventListener('click', () => { timerState.running ? pauseTimer() : startTimer(); });
+                resetLogBtn.addEventListener('click', () => { resetTimer(true); });
+                updateTimerDisplay();
+            };
+            
+            const updateTimerDisplay = () => {
+                const formattedTime = formatTime(timerState.difference);
+                timerDisplay.textContent = formattedTime;
+                document.getElementById('dashboard-timer-display').textContent = formattedTime;
+            };
+
+            const startTimer = () => {
+                if (timerState.running) return;
+                timerState.running = true;
+                timerState.paused = false;
+                startPauseBtn.textContent = 'Pause';
+                startPauseBtn.classList.replace('bg-green-500', 'bg-yellow-500');
+                timerState.startTime = new Date().getTime() - timerState.difference;
+                timerState.tInterval = setInterval(() => {
+                    timerState.updatedTime = new Date().getTime();
+                    timerState.difference = timerState.updatedTime - timerState.startTime;
+                    updateTimerDisplay();
+                }, 1000);
+            };
+
+            const pauseTimer = () => {
+                if (!timerState.running) return;
+                timerState.running = false;
+                timerState.paused = true;
+                startPauseBtn.textContent = 'Start';
+                startPauseBtn.classList.replace('bg-yellow-500', 'bg-green-500');
+                clearInterval(timerState.tInterval);
+            };
+
+            const resetTimer = (log) => {
+                if (log && timerState.difference > 0) {
+                    loggedSessions.push({ date: new Date().toISOString(), duration: timerState.difference, task: timerTaskSelect.value || "General Focus" });
+                    localStorage.setItem('productivity-sessions', JSON.stringify(loggedSessions));
+                    renderLoggedSessions();
+                }
+                clearInterval(timerState.tInterval);
+                timerState = { startTime: 0, updatedTime: 0, difference: 0, tInterval: null, running: false, paused: false };
+                startPauseBtn.textContent = 'Start';
+                startPauseBtn.classList.replace('bg-yellow-500', 'bg-green-500');
+                updateTimerDisplay();
+            };
+
+            const renderLoggedSessions = () => {
+                const historyContainer = document.getElementById('session-history-container');
+                const historyList = document.getElementById('session-history-list');
+                historyList.innerHTML = '';
+                if (loggedSessions.length > 0) {
+                    historyContainer.classList.remove('hidden');
+                    loggedSessions.forEach(session => {
+                        const li = document.createElement('li');
+                        li.className = "flex justify-between items-center bg-[var(--bg-secondary)] p-2 rounded-md border border-[var(--border-color)]";
+                        li.innerHTML = `<span>${session.task}</span><span class="font-medium text-[var(--text-primary)]">${formatTime(session.duration)}</span>`;
+                        historyList.appendChild(li);
+                    });
+                } else {
+                    historyContainer.classList.add('hidden');
+                }
+            };
+            
+            // --- NOTES ---
+            const notesTextarea = document.getElementById('notes-textarea');
+            notesTextarea.addEventListener('keyup', () => localStorage.setItem('productivity-notes', notesTextarea.value));
+            const loadNotes = () => { notesTextarea.value = localStorage.getItem('productivity-notes') || ''; };
+            
+            // --- WELLNESS ---
+            const calculateBmiBtn = document.getElementById('calculate-bmi-btn');
+            const bmiResultDisplay = document.getElementById('bmi-result-display');
+            document.getElementById('unit-system').addEventListener('change', () => {
+                document.getElementById('metric-inputs').classList.toggle('hidden');
+                document.getElementById('imperial-inputs').classList.toggle('hidden');
+            });
+            calculateBmiBtn.addEventListener('click', () => {
+                let weight, height;
+                const unit = document.getElementById('unit-system').value;
+                if (unit === 'metric') {
+                    weight = parseFloat(document.getElementById('metric-weight').value);
+                    height = parseFloat(document.getElementById('metric-height').value) / 100;
+                } else {
+                    weight = parseFloat(document.getElementById('imperial-weight').value);
+                    const ft = parseFloat(document.getElementById('imperial-height-ft').value) || 0;
+                    const inches = parseFloat(document.getElementById('imperial-height-in').value) || 0;
+                    height = (ft * 12) + inches;
+                }
+                if (weight > 0 && height > 0) {
+                    let bmi = (unit === 'metric') ? (weight / (height * height)) : (703 * (weight / (height * height)));
+                    let category = '';
+                    if (bmi < 18.5) category = 'Underweight'; else if (bmi < 25) category = 'Healthy Weight'; else if (bmi < 30) category = 'Overweight'; else category = 'Obesity';
+                    bmiData = { bmi, category };
+                    localStorage.setItem('productivity-bmi', JSON.stringify(bmiData));
+                    renderBmiResult(bmi, category);
+                } else {
+                    bmiResultDisplay.innerHTML = `<p class="text-red-500">Please enter valid weight and height.</p>`;
+                }
+            });
+            const renderBmiResult = (bmi, category) => {
+                const categoryColors = { 'Underweight': { text: 'text-blue-600', bg: 'bg-blue-100 dark:bg-blue-900' }, 'Healthy Weight': { text: 'text-green-600', bg: 'bg-green-100 dark:bg-green-900' }, 'Overweight': { text: 'text-yellow-600', bg: 'bg-yellow-100 dark:bg-yellow-900' }, 'Obesity': { text: 'text-red-600', bg: 'bg-red-100 dark:bg-red-900' } };
+                const colors = categoryColors[category];
+                bmiResultDisplay.innerHTML = `<p class="text-sm text-[var(--text-secondary)]">Your BMI is</p><p class="text-5xl font-bold ${colors.text} my-2">${bmi.toFixed(1)}</p><p class="font-semibold px-4 py-1 ${colors.bg} ${colors.text} rounded-full">${category}</p><div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 mt-6"><div class="h-2.5 rounded-full ${bmi < 18.5 ? 'bg-blue-500' : bmi < 25 ? 'bg-green-500' : bmi < 30 ? 'bg-yellow-500' : 'bg-red-500'}" style="width: ${Math.max(0, Math.min(100, ((bmi - 15) / 25) * 100))}%"></div></div>`;
+            };
+
+            // --- START THE APP ---
+            initializeApp();
+        });
+    </script>
+</body>
+</html>
